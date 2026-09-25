@@ -1,15 +1,36 @@
 const PART_PREFIX = 'game.data.part';
-const PART_COUNT = 24; // ← set this to your actual part count
+const PART_COUNT = 23; // your actual count
 const TARGET_FILE = 'game.data';
+
+const coiHeaders = {
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+};
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
   if (url.pathname.endsWith(TARGET_FILE)) {
     event.respondWith(assembleGameData(url));
+    return;
   }
+
+  // Inject COOP/COEP headers on every other same-origin response
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set('Cross-Origin-Embedder-Policy', coiHeaders['Cross-Origin-Embedder-Policy']);
+      newHeaders.set('Cross-Origin-Opener-Policy', coiHeaders['Cross-Origin-Opener-Policy']);
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
+    }).catch(() => fetch(event.request))
+  );
 });
 
 async function assembleGameData(url) {
@@ -28,5 +49,11 @@ async function assembleGameData(url) {
     merged.set(new Uint8Array(buf), offset);
     offset += buf.byteLength;
   }
-  return new Response(merged.buffer, { status: 200, headers: { 'Content-Type': 'application/octet-stream' } });
+  return new Response(merged.buffer, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Cross-Origin-Embedder-Policy': coiHeaders['Cross-Origin-Embedder-Policy'],
+    },
+  });
 }
