@@ -35,13 +35,16 @@ self.addEventListener('fetch', (event) => {
 
 async function assembleGameData(url) {
   const base = url.href.substring(0, url.href.lastIndexOf(TARGET_FILE));
-  const buffers = [];
+  const fetches = [];
   for (let i = 0; i < PART_COUNT; i++) {
     const num = String(i).padStart(3, '0');
-    const res = await fetch(`${base}${PART_PREFIX}${num}`);
-    if (!res.ok) return new Response('Failed to load part ' + num, { status: 500 });
-    buffers.push(await res.arrayBuffer());
+    fetches.push(fetch(`${base}${PART_PREFIX}${num}`).then(res => {
+      if (!res.ok) throw new Error('Failed to load part ' + num);
+      return res.arrayBuffer();
+    }));
   }
+  const buffers = await Promise.all(fetches);
+
   const total = buffers.reduce((sum, b) => sum + b.byteLength, 0);
   const merged = new Uint8Array(total);
   let offset = 0;
