@@ -57,6 +57,7 @@ async function assembleGameData(url) {
     headers: {
       'Content-Type': 'application/octet-stream',
       'Cross-Origin-Embedder-Policy': coiHeaders['Cross-Origin-Embedder-Policy'],
+      'Cache-Control': 'no-store',
     },
   });
 }
